@@ -63,6 +63,10 @@ async function startProgram(){
 async function run(){
   if (!followedAll) await followUsers();
   if (!checkedAll && data.status.followed > 999) await unfollowUsers();
+  if (followedAll && checkedAll){
+    console.log("Checked and followed everyone.");
+    return false;
+  }
   console.log("Waiting 72 minutes for next completion");
   setTimeout(async function(){
     await run();
@@ -75,30 +79,31 @@ async function followUsers(){
     console.log("Following users!");
     // First follow user
     let usersFollowed = new Array();
-    let t = data.status.followed+10;
+    let t = data.status.followed+5;
     // Checks if hit the max
     if (t > data.followers.length){
       t = data.followers.length;
     }
     if (t == data.status.followed) {
+      console.log("Followed everyone already!");
       followedAll = true;
       return false;
     }
-    // Looks for every user until hits limit (100)
-    // If user is already followed on data.json it will add one to limit
-    // to make sure it will follow 100 users / day
+    // Looks for every user until hits limit
     for (let i = data.status.followed; i<t; i++){
-      if (data.followers[i].followed) continue;
-      console.log("Checking status of " + data.followers[i].name);
+      if (data.followers[i].followed) {
+        t++;
+        continue;
+      }
+      console.log("Checking status of " + data.followers[i].screen_name);
       let options = {
         source_id : user_id,
         target_id : data.followers[i].id
       }
       let response = await client.getAsync('friendships/show', options);
-      console.log(response);
       data.followers[i].checked = true;
       if (response.relationship.source.following){
-        console.log("Already following " + data.followers[i].name);
+        console.log("Already following " + data.followers[i].screen_name);
         data.followers[i].followed = true;
         data.status.followed++;
         continue;
@@ -108,7 +113,7 @@ async function followUsers(){
         'user_id' : data.followers[i].id
       }
       await client.postAsync('friendships/create', options);
-      console.log("Followed user " + data.followers[i].name);
+      console.log("Followed user " + data.followers[i].screen_name);
       data.followers[i].followed = true;
       usersFollowed.push(data.followers[i]);
     }
@@ -121,7 +126,7 @@ async function followUsers(){
         status : message
       }
       let response = await client.postAsync('statuses/update', options);
-      console.log("Tweeted to " + usersFollowed[i].name );
+      console.log("Tweeted to " + usersFollowed[i].screen_name );
     }
     fs.writeFileSync('data.json', JSON.stringify(data));
   } catch (err){
@@ -137,12 +142,13 @@ async function unfollowUsers(){
   try {
     console.log("Following users!");
     let usersFollowed = new Array();
-    let t = data.status.checked+10;
+    let t = data.status.checked+5;
     // Checks if hit the max
     if (t > data.followers.length){
       t = data.followers.length;
     }
     if (t == data.status.checked) {
+      console.log("Already checked everyone for unfollows!");
       checkedAll = true;
       return false;
     }
@@ -158,13 +164,12 @@ async function unfollowUsers(){
       if (! response.relationship.target.following){
         // The user is not following us :(
         options = {
-          'follow' : true,
           'user_id' : data.followers[i].id
         }
         await client.postAsync('friendships/destroy', options);
-        console.log("Unfollowed user " + data.followers[i].name);
+        console.log("Unfollowed user " + data.followers[i].screen_name);
       } else {
-        console.log("The user " + data.followers[i].name + " has followed us back!");
+        console.log("The user " + data.followers[i].screen_name + " has followed us back!");
         data.status.followedUsBack++;
       }
     }
