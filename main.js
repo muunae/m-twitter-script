@@ -13,7 +13,7 @@ var client = promise.promisifyAll(new twitter({
 var user_id = process.env.USER_ID || '767430650202845186';
 
 // Target user screen name
-var user_screen_name = process.env.SCREEN_NAME || 'tobyfox';
+var user_screen_name = process.env.SCREEN_NAME || 'valvetime';
 
 // Tweet message
 var message = process.env.MESSAGE || ", I've followed you! Please follow me back!";
@@ -33,6 +33,7 @@ var followersCursor;
 
 var checkedAll = false;
 var followedAll = false;
+var count;
 /* 
 **  Functions and program
 */
@@ -90,36 +91,37 @@ async function followUsers(){
       return false;
     }
     // Looks for every user until hits limit
-    for (let i = data.status.followed; i<t; i++){
-      if (data.followers[i].followed) {
+    for (count = data.status.followed; count<t; count++){
+      if (data.followers[count].followed) {
+        data.status.followed++;
         t++;
         continue;
       }
-      console.log("Checking status of " + data.followers[i].screen_name);
+      console.log("Checking status of " + data.followers[count].screen_name);
       let options = {
         source_id : user_id,
-        target_id : data.followers[i].id
+        target_id : data.followers[count].id
       }
       let response = await client.getAsync('friendships/show', options);
-      data.followers[i].checked = true;
+      data.followers[count].checked = true;
       if (response.relationship.source.following){
-        console.log("Already following " + data.followers[i].screen_name);
-        data.followers[i].followed = true;
+        console.log("Already following " + data.followers[count].screen_name);
+        data.followers[count].followed = true;
         data.status.followed++;
         continue;
       }
       options = {
         'follow' : true,
-        'user_id' : data.followers[i].id
+        'user_id' : data.followers[count].id
       }
       await client.postAsync('friendships/create', options);
-      console.log("Followed user " + data.followers[i].screen_name);
-      data.followers[i].followed = true;
-      usersFollowed.push(data.followers[i]);
+      console.log("Followed user " + data.followers[count].screen_name);
+      data.followers[count].followed = true;
+      usersFollowed.push(data.followers[count]);
     }
     data.status.followed += usersFollowed.length;
     // Then tweet sending message
-    console.log("Tweeting to users followed!");
+    /*console.log("Tweeting to users followed!");
     for (let i = 0; i<usersFollowed.length; i++){
       let tweetMessage = "@" + usersFollowed[i].screen_name + message;
       let options = {
@@ -127,12 +129,13 @@ async function followUsers(){
       }
       let response = await client.postAsync('statuses/update', options);
       console.log("Tweeted to " + usersFollowed[i].screen_name );
-    }
+    }*/
     fs.writeFileSync('data.json', JSON.stringify(data));
   } catch (err){
     // Something went wrong
     console.log("An error was found.");
     console.log(err);
+    data.followers[count].followed = true;
     fs.writeFileSync('data.json', JSON.stringify(data));
     return false;
   }
